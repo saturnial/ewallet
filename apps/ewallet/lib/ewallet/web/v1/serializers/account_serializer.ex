@@ -5,6 +5,7 @@ defmodule EWallet.Web.V1.AccountSerializer do
   alias Ecto.Association.NotLoaded
   alias EWallet.Web.V1.{CategorySerializer, PaginatorSerializer}
   alias EWallet.Web.{Paginator, Date}
+  alias EWallet.CacheHandler
   alias EWalletDB.Account
   alias EWalletDB.Helpers.{Assoc, Preloader}
   alias EWalletDB.Uploaders.Avatar
@@ -21,24 +22,29 @@ defmodule EWallet.Web.V1.AccountSerializer do
   end
 
   def serialize(%Account{} = account) do
-    account = Preloader.preload(account, [:parent, :categories])
+    encoded = CacheHandler.fetch("v1/serializers/account/#{account.uuid}/#{account.updated_at}", fn ->
+      account = Preloader.preload(account, [:parent, :categories])
 
-    %{
-      object: "account",
-      id: account.id,
-      socket_topic: "account:#{account.id}",
-      parent_id: Assoc.get(account, [:parent, :id]),
-      name: account.name,
-      description: account.description,
-      master: Account.master?(account),
-      category_ids: CategorySerializer.serialize(account.categories, :id),
-      categories: CategorySerializer.serialize(account.categories),
-      avatar: Avatar.urls({account.avatar, account}),
-      metadata: account.metadata || %{},
-      encrypted_metadata: account.encrypted_metadata || %{},
-      created_at: Date.to_iso8601(account.inserted_at),
-      updated_at: Date.to_iso8601(account.updated_at)
-    }
+      %{
+        object: "account",
+        id: account.id,
+        socket_topic: "account:#{account.id}",
+        parent_id: Assoc.get(account, [:parent, :id]),
+        name: account.name,
+        description: account.description,
+        master: Account.master?(account),
+        category_ids: CategorySerializer.serialize(account.categories, :id),
+        categories: CategorySerializer.serialize(account.categories),
+        avatar: Avatar.urls({account.avatar, account}),
+        metadata: account.metadata || %{},
+        encrypted_metadata: account.encrypted_metadata || %{},
+        created_at: Date.to_iso8601(account.inserted_at),
+        updated_at: Date.to_iso8601(account.updated_at)
+      }
+      |> Poison.encode!()
+    end)
+
+    Poison.decode!(encoded)
   end
 
   def serialize(%NotLoaded{}), do: nil

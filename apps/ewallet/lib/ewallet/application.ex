@@ -11,9 +11,9 @@ defmodule EWallet.Application do
     set_decimal_context()
     # List all child processes to be supervised
     children = [
-      worker(EWallet.Scheduler, [])
+      worker(EWallet.Scheduler, []),
+      worker(EWallet.CacheHandler, [[name: EWallet.CacheHandler]])
     ]
-
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EWallet.Supervisor]
